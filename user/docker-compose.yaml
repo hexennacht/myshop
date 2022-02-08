@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  app:
+    container_name: user_api
+    build: .
+    ports:
+      - 8080:8080
+    restart: on-failure
+    environment:
+      PORT: 8080
+      ENVIRONMENT: "production"
+      SECRET_JWT: "veryReallySecretJWTKeyForUserAuthentication"
+      TOKEN_LIFE_TIME: 3000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: secret
+      DB_NAME: user_db
+      DB_PORT: 3306
+      REDIS_HOST: redisd
+      REDIS_PORT: 6379
+    depends_on:
+      - mariadb-db-1
+      - redis-redisd-1
+    networks:
+      - mariadb_database-net
+    volumes:
+      - .:/app
+
+networks:
+   mariadb_database-net:
+     external: true
