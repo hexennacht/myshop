@@ -5,20 +5,21 @@ services:
     ports: 
       - "3306:3306"
     networks:
-      - "database-net"
+      - "myshop"
     volumes: 
-      - database-vol:/var/lib/mariadb/data
+      - database:/var/lib/mariadb/data
+    command: ['--default-storage-engine=RocksDB', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_general_ci']
 
   adminer:
     image: adminer
     ports:
       - 3000:8080
     networks:
-      - "database-net"
+      - "myshop"
 
 networks:
-  database-net:
-    driver: overlay
+  myshop:
+    external: true
 
 volumes:
-  database-vol:
+  database:

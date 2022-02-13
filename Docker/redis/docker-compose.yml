@@ -5,9 +5,9 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - mariadb_database-net
+      - myshop
     volumes:
       - ./data:/var/lib/redis/data
 networks:
-  mariadb_database-net:
+  myshop:
     external: true

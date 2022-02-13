@@ -23,10 +23,10 @@ services:
       - mariadb-db-1
       - redis-redisd-1
     networks:
-      - mariadb_database-net
+      - myshop
     volumes:
       - .:/app
 
 networks:
-   mariadb_database-net:
+   myshop:
      external: true
