@@ -39,6 +39,7 @@ func (r *route) PublicRoute() Routes {
 
 func (r *route) AuthorizedRoute() Routes {
 	group := r.echo.Group("/user", middleware.ValidateToken())
-	group.GET("/list", r.userHandler.GetUserDetail, middleware.Contexter)
+	group.GET("/", r.userHandler.GetUserDetail, middleware.Contexter)
+	group.POST("/", r.userHandler.UpdatePassword, middleware.Contexter)
 	return r
 }

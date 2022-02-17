@@ -12,6 +12,7 @@ import (
 type Repository interface {
 	CreateUser(ctx context.Context, req *entity.CreateUser) error
 	GetUser(ctx context.Context, userNameEmail string) (*entity.User, error)
+	UpdateUserPassword(ctx context.Context, userName, password string) error
 }
 
 type repository struct {
@@ -35,4 +36,8 @@ func (r *repository) GetUser(ctx context.Context, userNameEmail string) (*entity
 	}
 
 	return user.TransformToEntity(), nil
+}
+
+func (r *repository) UpdateUserPassword(ctx context.Context, userName, password string) error {
+	return r.db.WithContext(ctx).Model(new(repo.User)).Where("username", userName).Updates(map[string]interface{}{"password": password}).Error
 }

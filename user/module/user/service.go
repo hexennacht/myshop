@@ -3,9 +3,9 @@ package user
 import (
 	"context"
 	"errors"
-	"golang.org/x/sync/errgroup"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	_ "golang.org/x/sync/errgroup"
 
 	"github.com/hexennacht/myshop/user/module/entity"
@@ -16,12 +16,39 @@ type Module interface {
 	UserLogin(ctx context.Context, req *entity.UserLogin) (*entity.UserLoginResponse, []error)
 	RegisterUser(ctx context.Context, req *entity.CreateUser) []error
 	GetUser(ctx context.Context, req *entity.UserLogin) (*entity.User, error)
+	UpdateUserPassword(ctx context.Context, req *entity.UserUpdatePasswordRequest) []error
 }
 
 type module struct {
 	repo          userRepository.Repository
 	tokenLifeTime int64
 	jwtSecret     string
+}
+
+func (m *module) UpdateUserPassword(ctx context.Context, req *entity.UserUpdatePasswordRequest) []error {
+	if errs := req.ValidateRequest(); len(errs) > 0 {
+		return errs
+	}
+
+	user, err := m.repo.GetUser(ctx, req.Username)
+	if err != nil {
+		return []error{err}
+	}
+
+	if err := req.ComparePassword(user.Password); err != nil {
+		return []error{err}
+	}
+
+	if err := req.CreatePassword(); err != nil {
+		return []error{err}
+	}
+
+	err = m.repo.UpdateUserPassword(ctx, req.Username, req.HashedPassword)
+	if err != nil {
+		return []error{err}
+	}
+
+	return nil
 }
 
 func NewModule(repo userRepository.Repository, tokenLifeTime int64, jwtSecret string) Module {
@@ -42,6 +69,7 @@ func (m *module) UserLogin(ctx context.Context, req *entity.UserLogin) (*entity.
 	if len(errs) > 0 {
 		return nil, errs
 	}
+
 	user, err := m.repo.GetUser(ctx, req.User)
 	if err != nil {
 		return nil, []error{err}

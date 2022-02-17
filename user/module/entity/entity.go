@@ -4,13 +4,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/hexennacht/myshop/user/handler/middleware"
-	"github.com/hexennacht/myshop/user/module"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/hexennacht/myshop/user/handler/middleware"
+	"github.com/hexennacht/myshop/user/module"
 )
 
 type User struct {
@@ -87,10 +88,10 @@ type CreateUser struct {
 	Email                string    `validate:"required,email" json:"email,omitempty"`
 	Password             string    `validate:"required,eqfield=ConfirmationPassword,gte=8,alphanum" json:"password,omitempty"`
 	ConfirmationPassword string    `validate:"eqfield=Password" json:"confirmation_password,omitempty"`
-	PhoneNumber          int32     `validate:"required" json:"phone_number,omitempty"`
+	PhoneNumber          int       `validate:"required" json:"phone_number,omitempty"`
 	BirthDayDate         time.Time `validate:"required" json:"birth_day_date"`
 	ProfilePicture       string    `validate:"url" json:"profile_picture,omitempty"`
-	HassedPassword       string    `json:"-"`
+	HashedPassword       string    `json:"-"`
 }
 
 func (c *CreateUser) ValidateRequest() []error {
@@ -110,17 +111,57 @@ func (c *CreateUser) ValidateRequest() []error {
 }
 
 func (c *CreateUser) CreatePassword() error {
-	c.HassedPassword = base64.StdEncoding.EncodeToString([]byte(c.Password))
+	c.HashedPassword = base64.StdEncoding.EncodeToString([]byte(c.Password))
 
-	password, err := bcrypt.GenerateFromPassword([]byte(c.HassedPassword), bcrypt.DefaultCost)
+	password, err := bcrypt.GenerateFromPassword([]byte(c.HashedPassword), bcrypt.DefaultCost)
 
-	c.HassedPassword = string(password)
+	c.HashedPassword = string(password)
 
 	return err
 }
 
 func (u *UserLogin) ComparePassword(pass string) error {
 	password := base64.StdEncoding.EncodeToString([]byte(u.Password))
+
+	return bcrypt.CompareHashAndPassword([]byte(pass), []byte(password))
+}
+
+type UserUpdatePasswordRequest struct {
+	OldPassword          string `json:"oldPassword" validate:"required"`
+	NewPassword          string `json:"newPassword" validate:"required,eqfield=ConfirmationPassword,gte=8,alphanum"`
+	ConfirmationPassword string `json:"confirmationPassword" validate:"required,eqfield=NewPassword,gte=8,alphanum"`
+	Username             string `json:"-"`
+	HashedPassword       string `json:"-"`
+}
+
+func (c *UserUpdatePasswordRequest) ValidateRequest() []error {
+	v := validator.New()
+	err := v.Struct(c)
+	validationErrors, ok := err.(validator.ValidationErrors)
+	if !ok && len(validationErrors) > 0 {
+		return []error{errors.New("failed to get error")}
+	}
+
+	var errs []error
+	for _, e := range validationErrors {
+		errs = append(errs, fmt.Errorf(e.Error()))
+	}
+
+	return errs
+}
+
+func (c *UserUpdatePasswordRequest) CreatePassword() error {
+	c.HashedPassword = base64.StdEncoding.EncodeToString([]byte(c.NewPassword))
+
+	password, err := bcrypt.GenerateFromPassword([]byte(c.HashedPassword), bcrypt.DefaultCost)
+
+	c.HashedPassword = string(password)
+
+	return err
+}
+
+func (u *UserUpdatePasswordRequest) ComparePassword(pass string) error {
+	password := base64.StdEncoding.EncodeToString([]byte(u.OldPassword))
 
 	return bcrypt.CompareHashAndPassword([]byte(pass), []byte(password))
 }

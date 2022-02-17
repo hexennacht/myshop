@@ -15,6 +15,7 @@ type Handler interface {
 	UserLogin(c echo.Context) error
 	UserRegister(c echo.Context) error
 	GetUserDetail(c echo.Context) error
+	UpdatePassword(c echo.Context) error
 }
 
 type handler struct {
@@ -97,6 +98,12 @@ func (h *handler) GetUserDetail(c echo.Context) error {
 	}
 
 	userCtx, ok := helper.ParseContext(ctx)
+	if !ok {
+		return c.JSON(http.StatusForbidden, map[string]interface{}{
+			"message": "forbidden access",
+			"code":    403,
+		})
+	}
 	user, err := h.mod.GetUser(ctx, &entity.UserLogin{User: userCtx.Username})
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -108,6 +115,53 @@ func (h *handler) GetUserDetail(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "success",
 		"data":    user,
+		"code":    200,
+	})
+}
+
+func (h *handler) UpdatePassword(c echo.Context) error {
+	ctx, ok := helper.FromEchoContext(c)
+	if !ok {
+		return c.JSON(http.StatusForbidden, map[string]interface{}{
+			"message": "forbidden access",
+			"code":    403,
+		})
+	}
+
+	userCtx, ok := helper.ParseContext(ctx)
+	if !ok {
+		return c.JSON(http.StatusForbidden, map[string]interface{}{
+			"message": "forbidden access",
+			"code":    403,
+		})
+	}
+
+	var req entity.UserUpdatePasswordRequest
+	err := c.Bind(&req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": "request malformed",
+			"error":   err,
+			"code":    400,
+		})
+	}
+
+	req.Username = userCtx.Username
+	if errs := h.mod.UpdateUserPassword(context.Background(), &req); errs != nil {
+		var errorMessages []string
+		for _, err := range errs {
+			errorMessages = append(errorMessages, strings.Replace(err.Error(), "UserUpdatePasswordRequest.", "", -1))
+		}
+
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": "request malformed",
+			"error":   errorMessages,
+			"code":    400,
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "user update password success",
 		"code":    200,
 	})
 }
